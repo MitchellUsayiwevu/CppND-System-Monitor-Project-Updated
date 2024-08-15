@@ -67,7 +67,12 @@ vector<int> LinuxParser::Pids() {
 }
 
 // TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+float LinuxParser::MemoryUtilization() {
+
+    return 0.0;
+
+//    /proc/meminfo
+}
 
 // TODO: Read and return the system uptime
 long LinuxParser::UpTime() { return 0; }
@@ -86,7 +91,32 @@ long LinuxParser::ActiveJiffies() { return 0; }
 long LinuxParser::IdleJiffies() { return 0; }
 
 // TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+vector<string> LinuxParser::CpuUtilization() {
+
+    std::string first_line;
+    std::vector<std::string> string_nums;
+    std::string el0,el1,el2,el3,el4,el5,el6,el7,el8,el9,el10;
+    float aggregate;
+    std::ifstream stream(kProcDirectory + kMeminfoFilename);
+
+    if(stream.is_open()){
+
+        std::getline(stream, first_line);
+        std::istringstream linestream(first_line);
+        linestream >> el0>>el1>>el2>>el3>>el4>>el5>>el6>>el7>>el8>>el9>>el10;
+        string_nums= {el1,el2,el3,el4,el5,el6,el7,el8,el9,el10};
+        return string_nums;
+
+//        for(auto &string_num:string_nums){
+//
+//            aggregate += std::stof(string_num);
+//        }
+//
+//        return aggregate;
+
+    }
+
+}
 
 // TODO: Read and return the total number of processes
 int LinuxParser::TotalProcesses() { return 0; }
