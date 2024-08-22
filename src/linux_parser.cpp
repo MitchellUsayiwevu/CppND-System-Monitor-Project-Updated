@@ -126,17 +126,60 @@ long LinuxParser::UpTime() {
 }
 
 // TODO: Read and return the number of jiffies for the system
-long LinuxParser::Jiffies() { return 0; }
+long LinuxParser::Jiffies() {
+
+  return (IdleJiffies() + ActiveJiffies());
+
+}
 
 // TODO: Read and return the number of active jiffies for a PID
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
+
+long LinuxParser::ActiveJiffies(int pid ){
+
+  std::string pid_line, val;
+  long jiffies_1,jiffies_2;
+  std::ifstream pid_jiffies_stream(kProcDirectory + std::to_string(pid) + kStatFilename );
+  if(pid_jiffies_stream.is_open()){
+    std::getline(pid_jiffies_stream, pid_line);
+    std::istringstream mystream(pid_line);
+
+    for(int i=0; i<17; i++){
+        mystream>>val;
+        if(i==13){
+          jiffies_1 = stol(val);
+        }
+        if(i==16){
+          jiffies_2 = stol(val);
+        }
+    }
+
+    return jiffies_1 + jiffies_2 ;
+
+  }
+
+  return 0;
+
+}
 
 // TODO: Read and return the number of active jiffies for the system
-long LinuxParser::ActiveJiffies() { return 0; }
+long LinuxParser::ActiveJiffies() {
+
+  auto jiffies = CpuUtilization();
+  long num = stol(jiffies[CPUStates::kUser_]) + stol(jiffies[CPUStates::kNice_])+stol(jiffies[CPUStates::kSystem_])+stol(jiffies[CPUStates::kIRQ_])+
+             stol(jiffies[CPUStates::kSoftIRQ_])+stol(jiffies[CPUStates::kSteal_]);
+  return num;
+
+}
 
 // TODO: Read and return the number of idle jiffies for the system
-long LinuxParser::IdleJiffies() { return 0; }
+long LinuxParser::IdleJiffies() {
+
+  auto jiffies = CpuUtilization();
+  long num = stol(jiffies[CPUStates::kIdle_]) + stol(jiffies[CPUStates::kIOwait_]);
+
+  return num;
+
+}
 
 // TODO: Read and return CPU utilization
 vector<string> LinuxParser::CpuUtilization() {
@@ -274,7 +317,7 @@ string LinuxParser::User(int pid) {
       std::istringstream username_stream(line);
       username_stream>>username;
     }
-    return username;
+    return username ;
   }
   return username;
 

@@ -7,7 +7,7 @@
 float Processor::Utilization() {
     std::vector<std::string> cpu_strings =  LinuxParser::CpuUtilization();
 
-    double  user_ = std::stod(cpu_strings.at(0));
+    double user_ = std::stod(cpu_strings.at(0));
     double nice_ = std::stod(cpu_strings.at(1));
     double system_=std::stod(cpu_strings.at(2));
     double idle_ = std::stod(cpu_strings.at(3));
