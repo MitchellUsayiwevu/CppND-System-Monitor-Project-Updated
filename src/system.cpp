@@ -27,11 +27,14 @@ vector<Process>& System::Processes() {
   std::vector<int> Process_IDs =  LinuxParser::Pids();
 
   for (auto& pid: Process_IDs){
+
     Process process(pid);
     processes_.emplace_back(process);
   }
 
-      return processes_;
+  std::sort(processes_p->begin(), processes_p->end());
+
+  return processes_;
 }
 
 // TODO: Return the system's kernel identifier (string)

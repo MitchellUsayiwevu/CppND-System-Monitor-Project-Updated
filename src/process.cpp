@@ -24,8 +24,10 @@ int Process::Pid() {
 
 // TODO: Return this process's CPU utilization
 float Process::CpuUtilization() const {
+  float temp =LinuxParser::ActiveJiffies(pid_ );
+  std::cout<<"cpu ut"<< temp <<std::endl;
+  return temp;
 
-  return LinuxParser::ActiveJiffies(pid_ );
 
 }
 
@@ -37,8 +39,15 @@ string Process::Command() {
 
 // TODO: Return this process's memory utilization
 string Process::Ram() {
+  try{
+    std::string kb_ram = LinuxParser::Ram( pid_) ;
+    long mb_ram = stol(kb_ram)*0.0009765625;            //convert from KB to MB
+    return std::to_string(mb_ram);
+  }
+  catch(...){
 
-    return LinuxParser::Ram( pid_) ;
+  }
+  return {"0"};
 }
 
 // TODO: Return the user (name) that generated this process

@@ -68,7 +68,7 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
-// TODO: Read and return the system memory utilization
+
 float LinuxParser::MemoryUtilization() {
 
     float MemTotal{0};
@@ -77,7 +77,6 @@ float LinuxParser::MemoryUtilization() {
     float Buffers{0};
     float Total_used_memory{0};
     float Non_cache_memory{0};
-
 
     std::string line;
     std::ifstream mem_utiliz_stream(kProcDirectory + kMeminfoFilename);
@@ -95,11 +94,12 @@ float LinuxParser::MemoryUtilization() {
         MemAvailable = memory_values.at(2);
         Buffers = memory_values.at(3);
 
+        mem_utiliz_stream.close();
     }
     Total_used_memory = MemTotal - MemFree;
     Non_cache_memory = Total_used_memory - Buffers;  //green
 
-    return (Non_cache_memory/MemAvailable);
+    return (1.0 - (Non_cache_memory/MemAvailable));
 
 }
 
@@ -108,20 +108,28 @@ float LinuxParser::MemoryUtilization() {
 long LinuxParser::UpTime() {
 
     long uptime{0};
-    long idle_time{0};
     std::string line, uptime_s, idle_time_s;
 
     std::ifstream Timestream (kProcDirectory + kUptimeFilename);
-
+  try{
     if(Timestream.is_open()){
         std::getline(Timestream, line);
         std::istringstream linestream(line);
         linestream>>uptime_s>>idle_time_s;
-        uptime = std::stol(uptime_s);
-        idle_time = std::stol(idle_time_s);
-    }
 
-    return uptime;
+        uptime = std::stol(uptime_s);
+
+        Timestream.close();
+        return uptime;
+    }
+  }
+  catch(std::exception& e)
+  {
+    std::cerr << e.what() << '\n';
+  }
+
+
+  return uptime;
 
 }
 
@@ -134,27 +142,67 @@ long LinuxParser::Jiffies() {
 
 // TODO: Read and return the number of active jiffies for a PID
 
-long LinuxParser::ActiveJiffies(int pid ){
+float LinuxParser::ActiveJiffies(int pid ){
 
   std::string pid_line, val;
-  long jiffies_1,jiffies_2;
+  float cpu_usage{0};
+  long utime{0};
+  long stime{0};
+  long cutime{0};
+  long cstime{0};
+  long starttime{0};
   std::ifstream pid_jiffies_stream(kProcDirectory + std::to_string(pid) + kStatFilename );
-  if(pid_jiffies_stream.is_open()){
-    std::getline(pid_jiffies_stream, pid_line);
-    std::istringstream mystream(pid_line);
+  try{
 
-    for(int i=0; i<17; i++){
-        mystream>>val;
-        if(i==13){
-          jiffies_1 = stol(val);
+    if(pid_jiffies_stream.is_open()) {
+      std::getline(pid_jiffies_stream, pid_line);
+      std::istringstream mystream(pid_line);
+
+      for (int i = 0; i < 22; i++) {
+        mystream >> val;
+        if (i == 13) {
+          if (val != "") {
+            utime = stol(val);
+          }
         }
-        if(i==16){
-          jiffies_2 = stol(val);
+        if (i == 14) {
+          if (val != "") {
+            stime = stol(val);
+          }
         }
-    }
+        if (i == 15) {
+          if (val != "") {
+            cutime = stol(val);
+          }
+        }
+        if (i == 16) {
+          if (val != "") {
+            cstime = stol(val);
+          }
+        }
+        if (i == 21) {
+          if (val != "") {
+            starttime = stol(val);
+          }
+        }
+      }
 
-    return jiffies_1 + jiffies_2 ;
+      long int total_time = utime + stime + cutime + cstime;
 
+      long int uptime = LinuxParser::UpTime();
+
+      float seconds = uptime - (starttime / sysconf(_SC_CLK_TCK));
+
+      pid_jiffies_stream.close();
+      cpu_usage = (total_time / sysconf(_SC_CLK_TCK)) / seconds;
+      return cpu_usage;
+  }
+
+
+  }
+  catch(std::exception& e)
+  {
+    std::cerr << e.what() << '\n';
   }
 
   return 0;
@@ -165,8 +213,20 @@ long LinuxParser::ActiveJiffies(int pid ){
 long LinuxParser::ActiveJiffies() {
 
   auto jiffies = CpuUtilization();
-  long num = stol(jiffies[CPUStates::kUser_]) + stol(jiffies[CPUStates::kNice_])+stol(jiffies[CPUStates::kSystem_])+stol(jiffies[CPUStates::kIRQ_])+
-             stol(jiffies[CPUStates::kSoftIRQ_])+stol(jiffies[CPUStates::kSteal_]);
+  long num{0};
+
+  try {
+    num = stol(jiffies[CPUStates::kUser_]) + stol(jiffies[CPUStates::kNice_]) +
+          stol(jiffies[CPUStates::kSystem_]) + stol(jiffies[CPUStates::kIRQ_]) +
+          stol(jiffies[CPUStates::kSoftIRQ_]) +
+          stol(jiffies[CPUStates::kSteal_]);
+    return num;
+  }
+  catch(std::exception& e)
+  {
+    std::cerr << e.what() << '\n';
+  }
+
   return num;
 
 }
@@ -175,8 +235,14 @@ long LinuxParser::ActiveJiffies() {
 long LinuxParser::IdleJiffies() {
 
   auto jiffies = CpuUtilization();
-  long num = stol(jiffies[CPUStates::kIdle_]) + stol(jiffies[CPUStates::kIOwait_]);
-
+  long num{0};
+  try {
+    num = stol(jiffies[CPUStates::kIdle_]) + stol(jiffies[CPUStates::kIOwait_]);
+    return num;
+  }
+  catch(std::exception & e){
+    std::cerr<<e.what()<<std::endl;
+  }
   return num;
 
 }
@@ -199,6 +265,7 @@ vector<string> LinuxParser::CpuUtilization() {
 
         string_nums = {el1,el2,el3,el4,el5,el6,el7,el8,el9,el10};
 
+        stream.close();
         return string_nums;
 
     }
@@ -219,10 +286,12 @@ int LinuxParser::TotalProcesses() {
             std::istringstream  linestream(line);
             linestream >> first_element>> second_element;
             if (first_element=="processes"){
+                processes_stream.close();
                 return std::stoi(second_element);
             }
 
         }
+
     }
 
     return 0;
@@ -241,11 +310,13 @@ int LinuxParser::RunningProcesses() {
             std::istringstream  linestream(line);
             linestream >> first_element>> second_element;
             if (first_element=="procs_running"){
+                processes_stream.close();
                 return std::stoi(second_element);
             }
 
         }
     }
+
 
     return 0;
 
@@ -258,8 +329,10 @@ string LinuxParser::Command(int pid) {
   std::ifstream command_stream(kProcDirectory + std::to_string(pid) + kCmdlineFilename);
   if(command_stream.is_open()){
     std::getline(command_stream, cmd);
+    command_stream.close();
     return cmd;
   }
+
 
   return cmd;
 
@@ -277,10 +350,12 @@ string LinuxParser::Ram(int pid) {
       std::istringstream mystream(line);
       mystream>>str>>num;
       if (str=="VmSize:"){
+        memory_stream.close();
         return num;
       }
     }
   }
+
   return num;
 
 }
@@ -297,28 +372,33 @@ string LinuxParser::Uid(int pid){
       std::istringstream user_id_stream(line);
       user_id_stream>>str>>num;
       if(str =="Uid:"){
+        user_stream.close();
         return num;
       }
     }
   }
+
   return num;
 }
 
-// TODO: Read and return the user associated with a process
 
 string LinuxParser::User(int pid) {
 
   std::string username{};
-  std::string line;
+  std::string line, letter_x, value;
   std::ifstream username_file( kPasswordPath );
   if(username_file.is_open()){
     while(std::getline(username_file , line) ) {
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream username_stream(line);
-      username_stream>>username;
+      username_stream>> username >> letter_x >> value;
+      if( value == std::to_string(pid)){
+        return username;
+      }
     }
-    return username ;
+
   }
+
   return username;
 
 }
@@ -328,7 +408,9 @@ string LinuxParser::User(int pid) {
 long LinuxParser::UpTime(int pid) {
 //  /proc/[pid]/stat.
     std::string uptime_line;
-    std::string l0,l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19,l20,l21,l22;
+    std::string l0,l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19,l20;
+    std::string l21{};
+    long clock_ticks{0};
     std::ifstream uptime_file(kProcDirectory + std::to_string(pid) + kStatFilename  );
 
     if (uptime_file.is_open()){
@@ -336,10 +418,16 @@ long LinuxParser::UpTime(int pid) {
       std::getline(uptime_file, uptime_line);
       std::istringstream mystream(uptime_line);
       mystream>>l0>>l1>>l2>>l3>>l4>>l5>>l6>>l7>>l8>>l9>>l10>>l11>>l12>>l13>>l14>>l15>>l16>>l17>>l18>>l19>>l20>>l21;
-      long clock_ticks = stol(l21);
+      try{
+        clock_ticks = stol(l21);
+      }
+      catch(...){
+
+      }
       long time_var = clock_ticks / sysconf(_SC_CLK_TCK);
 
-      return  time_var;
+      uptime_file.close();
+      return  UpTime() - time_var;
 
     }
 
