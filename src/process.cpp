@@ -13,7 +13,7 @@ using std::to_string;
 using std::vector;
 
 Process::Process(int id):pid_(id){
-//  std::cout<<"process constructor:  "<<pid_<<std::endl;
+
 }
 
 // TODO: Return this process's ID
@@ -25,7 +25,7 @@ int Process::Pid() {
 // TODO: Return this process's CPU utilization
 float Process::CpuUtilization() const {
   float temp =LinuxParser::ActiveJiffies(pid_ );
-  std::cout<<"cpu ut"<< temp <<std::endl;
+//  std::cout<<"cpu ut"<< temp <<std::endl;
   return temp;
 
 

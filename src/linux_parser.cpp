@@ -104,7 +104,7 @@ float LinuxParser::MemoryUtilization() {
 }
 
 
-// TODO: Read and return the system uptime
+// Done: Read and return the system uptime
 long LinuxParser::UpTime() {
 
     long uptime{0};
@@ -133,15 +133,15 @@ long LinuxParser::UpTime() {
 
 }
 
-// TODO: Read and return the number of jiffies for the system
+// Done: Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() {
 
   return (IdleJiffies() + ActiveJiffies());
 
 }
 
-// TODO: Read and return the number of active jiffies for a PID
 
+// Done : Read and return the number of active jiffies for a PID
 float LinuxParser::ActiveJiffies(int pid ){
 
   std::string pid_line, val;
@@ -188,13 +188,12 @@ float LinuxParser::ActiveJiffies(int pid ){
       }
 
       long int total_time = utime + stime + cutime + cstime;
-
       long int uptime = LinuxParser::UpTime();
-
       float seconds = uptime - (starttime / sysconf(_SC_CLK_TCK));
 
       pid_jiffies_stream.close();
-      cpu_usage = (total_time / sysconf(_SC_CLK_TCK)) / seconds;
+      cpu_usage = 100 * ( (total_time / sysconf(_SC_CLK_TCK)) / seconds) ;
+
       return cpu_usage;
   }
 
@@ -209,7 +208,7 @@ float LinuxParser::ActiveJiffies(int pid ){
 
 }
 
-// TODO: Read and return the number of active jiffies for the system
+// Done: Read and return the number of active jiffies for the system
 long LinuxParser::ActiveJiffies() {
 
   auto jiffies = CpuUtilization();
@@ -231,7 +230,7 @@ long LinuxParser::ActiveJiffies() {
 
 }
 
-// TODO: Read and return the number of idle jiffies for the system
+// Done: Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() {
 
   auto jiffies = CpuUtilization();
@@ -252,7 +251,8 @@ vector<string> LinuxParser::CpuUtilization() {
 
     std::string first_line;
     std::vector<std::string> string_nums(10);
-    std::string el0, el1, el2, el3, el4, el5, el6, el7, el8, el9, el10;
+    std::string el0;
+    std::string user,nice ,system, idle,iowait,irq,softirq,steal,guest,guest_nice;
 
     std::ifstream stream(kProcDirectory + kStatFilename);
 
@@ -261,9 +261,9 @@ vector<string> LinuxParser::CpuUtilization() {
         std::getline(stream, first_line);
         std::istringstream linestream(first_line);
 
-        linestream >> el0>>el1>>el2>>el3>>el4>>el5>>el6>>el7>>el8>>el9>>el10;
+        linestream >> el0>>user>>nice>>system>>idle>>iowait>>irq>>softirq>>steal>>guest>>guest_nice;
 
-        string_nums = {el1,el2,el3,el4,el5,el6,el7,el8,el9,el10};
+        string_nums = {user,nice,system,idle,iowait,irq,softirq,steal,guest,guest_nice};
 
         stream.close();
         return string_nums;
